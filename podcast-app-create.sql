@@ -8,7 +8,7 @@
 
 -- Cleanup for podcast-app
 
-DROP PROCEDURE podcastAdmin.sp_change_sname;
+DROP PROCEDURE podcastAdmin.sp_change_sdescription;
 DROP PROCEDURE podcastAdmin.sp_change_eparticipant;
 DROP PROCEDURE podcastAdmin.sp_change_pcharge;
 DROP USER podcastAdmin CASCADE;
@@ -322,7 +322,7 @@ ADD isChargeRemoved VARCHAR2(5) DEFAULT 'FALSE';
 -- Create views
 --
 CREATE OR REPLACE VIEW SHOW_VIEW AS
-SELECT SHOWS.show_id, SDESCRIPTIONS.show_description, SHOWS.channel_id, SHOWS.category_id
+SELECT SHOWS.show_id, SHOWS.show_name, SDESCRIPTIONS.show_description, SHOWS.channel_id, SHOWS.category_id
 FROM SHOWS
      LEFT JOIN SHOWS_SDESCRIPTIONS
 	ON SHOWS.show_id = SHOWS_SDESCRIPTIONS.show_id
@@ -359,30 +359,30 @@ WHERE PEPISODES_PCHARGES.end_time IS NULL;
 --
 -- Stored procedures for use by triggers
 --
-CREATE OR REPLACE PROCEDURE sp_change_sname (show_id IN NUMBER, 
-											 sname IN VARCHAR2 DEFAULT NULL) AS
-	var_sname_seq NUMBER; -- show_description_id (PK) used in TABLE SDESCRIPTIONS
-	var_sn_seq NUMBER; -- show_sdescription_id (PK) used in TABLE SHOWS_SDESCRIPTIONS
+CREATE OR REPLACE PROCEDURE sp_change_sdescription (show_id IN NUMBER, 
+											 sdes IN VARCHAR2 DEFAULT NULL) AS
+	var_sdes_seq NUMBER; -- show_description_id (PK) used in TABLE SDESCRIPTIONS
+	var_sd_seq NUMBER; -- show_sdescription_id (PK) used in TABLE SHOWS_SDESCRIPTIONS
 BEGIN
-	UPDATE SHOWS_SDESCRIPTIONS -- set the end time for current show name
+	UPDATE SHOWS_SDESCRIPTIONS -- set the end time for current show description
 		SET end_time = SYSDATE
 		WHERE SHOWS_SDESCRIPTIONS.show_id = show_id
 		AND end_time IS NULL;
 	
-	IF sname IS NOT NULL THEN -- insert / update the show name
-		var_sname_seq := idsdecription_seq.NEXTVAL;
-		var_sn_seq := idshow_sdescription_seq.NEXTVAL;
+	IF sdes IS NOT NULL THEN -- insert / update the show description
+		var_sdes_seq := idsdecription_seq.NEXTVAL;
+		var_sd_seq := idshow_sdescription_seq.NEXTVAL;
 		
-		INSERT INTO SDESCRIPTIONS VALUES -- add new name to TABLE SDESCRIPTIONS
-			(var_sname_seq, sname);
-		INSERT INTO SHOWS_SDESCRIPTIONS VALUES -- set the start time for new name
-			(var_sn_seq,
+		INSERT INTO SDESCRIPTIONS VALUES -- add new description to TABLE SDESCRIPTIONS
+			(var_sdes_seq, sdes);
+		INSERT INTO SHOWS_SDESCRIPTIONS VALUES -- set the start time for new description
+			(var_sd_seq,
 			show_id,
-			var_sname_seq,
+			var_sdes_seq,
 			SYSDATE, 
 			NULL,
 			NULL);
-	ELSE -- delete the show name
+	ELSE -- delete the show description
 		UPDATE SHOWS
 		SET isNameDeleted = 'TRUE'
 		WHERE SHOWS.show_id = show_id;
@@ -394,25 +394,27 @@ CREATE OR REPLACE TRIGGER show_trigger
 INSTEAD OF INSERT OR UPDATE OR DELETE ON SHOW_VIEW
 DECLARE
 	var_idshow NUMBER; -- show_id (PK) used in TABLE SHOWS
-	var_sname VARCHAR2(50); -- show_description used in TABLE SDESCRIPTIONS
+	var_sname VARCHAR2(50); -- show_name used in TABLE SDESCRIPTIONS
+	var_sdes VARCHAR2(50); -- show_description used in TABLE SDESCRIPTIONS
 	var_idchannel NUMBER; -- channel_id used in TABLE CHANNELS (PK) and TABLE SHOWS (FK)
 	var_idcategory NUMBER; -- category_id used in TABLE CATEGORIES (PK) and TABLE SHOWS (FK)
 BEGIN
 	IF INSERTING THEN
 		var_idshow := idshow_seq.NEXTVAL;
-		var_sname := :NEW.show_description;
+		var_sname := :NEW.show_name;
+		var_sdes := :NEW.show_description;
 		var_idchannel := :NEW.channel_id;
 		var_idcategory := :NEW.category_id;
-		INSERT INTO SHOWS (show_id, channel_id, category_id)
-				VALUES (var_idshow, var_idchannel, var_idcategory); -- create a new show
+		INSERT INTO SHOWS (show_id, show_name, channel_id, category_id)
+				VALUES (var_idshow, var_sname, var_idchannel, var_idcategory); -- create a new show
 	ELSIF DELETING THEN -- no show_description exist after deleting
 		var_idshow := :OLD.show_id;
 	ELSIF UPDATING THEN
 		var_idshow := :OLD.show_id;
-		var_sname := :NEW.show_description;
+		var_sdes := :NEW.show_description;
 	END IF;
 	
-	sp_change_sname (var_idshow, var_sname);
+	sp_change_sdescription (var_idshow, var_sdes);
 END;
 /
 
