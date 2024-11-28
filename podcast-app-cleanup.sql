@@ -1,4 +1,8 @@
--- Cleanup for podcast-app
+--
+-- Cleanup for podcast application database
+--
+-- should be run while connected as 'sys as sysdba'
+--
 
 DROP PROCEDURE podcastAdmin.sp_change_sdescription;
 DROP PROCEDURE podcastAdmin.sp_change_eparticipant;
